@@ -48,7 +48,7 @@ public class PointSet extends Place {
             list.add(e);
         }
     }
-   
+    
     private ArrayList<Point> points;
     private Edge[] convex_hull;
     private Edge[] voronoi_edges;
@@ -56,7 +56,8 @@ public class PointSet extends Place {
     public static final int COMPUTE_VORONOI= 0;
     public static final int MERGE_VORONOI= 1;
     public static final int GET_HOSTNAME= 2;
-    public static final int FINAL_MERGE= 3;
+    public static final int FILL_NEIGHBOR_BUFFER= 3;
+    
     
     public PointSet(Object o) {
         points= new ArrayList<Point>();
@@ -67,11 +68,11 @@ public class PointSet extends Place {
             case COMPUTE_VORONOI:
                 return compute_voronoi(o);
             case MERGE_VORONOI:
-                return merge_voronoi(o);
+                return merge_voronoi_wrapper(o);
             case GET_HOSTNAME:
                 return null;
-            case FINAL_MERGE:
-                return final_merge(o);
+            case FILL_NEIGHBOR_BUFFER:
+                return getPointSet();
             default:
                 return new String("Error in callMethod");
         }
@@ -99,7 +100,8 @@ public class PointSet extends Place {
     
     //compute voronio map for a given set of points
     //given a PointSet with n points, this function returns an EdgeList object holding n-1 edges
-    public EdgeList compute_voronoi(PointSet ps) {
+    public EdgeList compute_voronoi(Object pointset) {
+        PointSet ps= (PointSet) pointset;
         if(ps.length() == 2 || ps.length() == 1) {
             return ps.bisect(ps);
         }
@@ -112,7 +114,7 @@ public class PointSet extends Place {
     }
     
     //merge 2 voronoi maps
-    public EdgeList merge_voronoi(EdgeList v1, EdgeList v2, PointSet s1, PointSet s2) {
+    public EdgeList merge_voronoi(EdgeList v1, EdgeList v2, PointSet s1, PointSet s2) {        
         ConvexHull ch1= get_convex_hull(s1);
         ConvexHull ch2= get_convex_hull(s2);
         Edge csl= compute_support_line(ch1,ch2);
@@ -134,16 +136,29 @@ public class PointSet extends Place {
         return trim(v1, v2);
     }
     
-    
-    public Object[] merge_voronoi(Object[] unmergedEdges, int leftsubarray, int rightsubarray) {        
+    public PointSet merge_voronoi_wrapper(Object global_step) {
         
-    }
-    
-    public void final_merge(Object o) {
+        if(id != 0 && (id == step || id % step != 0)) return;
+        
+        int step= (int) global_step;
+        EdgeList rhs= null;
         //i+1 to i for every pair
         //i+2 to i for every 3rd
         //i+4
-        
+        //neighbor[this.index+global_step]
+        PointSet[] neighbors= (PointSet[]) getInMessages();
+        if(neighbors) != null) {
+           if(neighbors[step] != null) {     //set the ith neighbor
+                rhs= neighbors[id+step];
+            }
+        }
+        EdgeList lhs= this.EdgeList;
+        EdgeList merged= merge_voronoi(lhs, rhs, lhs.getPointSet(), rhs);
+        return merged;
+    }
+    
+    public PointSet getPointSet() {
+        return this;
     }
     
 }
