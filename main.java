@@ -1,8 +1,7 @@
-import edu.uw.bothell.css.dsl.MASS.Voronoi;
-import edu.uw.bothell.css.dsl.MASS.Agents;
-import edu.uw.bothell.css.dsl.MASS.MASS;
-import edu.uw.bothell.css.dsl.MASS.Places;
-import edu.uw.bothell.css.dsl.MASS.logging.LogLevel;
+package mass;
+
+
+import edu.uw.bothell.css.dsl.MASS.*;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,30 +14,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
-import mass.PointSet;
 import mass.Point;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Vector;
+import mass.PartialVoronoi;
 
-
-/*      
-    -executon pipeline:
-        compute bisectors -> convex hull -> lcsl -> merge -> exchange
-
-
-
-TODO:
-    -define compute_voronoi
-    -define lcsl finder
-    -convex hull method
-    -merge method
-
-*/
 
 public class main {
 
     private static final String NODE_FILE = "nodes.xml";
+    public static int NUM_PLACES;
     
     public static void main(String[] args) {
             
@@ -65,44 +52,43 @@ public class main {
         //number of Place objects is log2 of the total number of points
         int num_places= (int)Math.ceil(Math.log10(xy_points.size()) / Math.log10(2));
         
-        ArrayList<PointSet> grouped_points= new ArrayList<PointSet>();
+        NUM_PLACES= num_places;
+        
+        ArrayList<ArrayList<Point>> grouped_points= new ArrayList<ArrayList<Point>>();
         
         // add first pair of Points as adding 1 pointset to grouped_points
-        grouped_points.add(new PointSet(xy_points[0]));
         
         //group remaining points into PointSet objects and fill point_list with these PointSets
-        for(int i= 1; i < xy_points.size(); i*=2+1) {
-            PointSet group= new PointSet();       //represents a group of xy pairs
-            for(int j= i; j <= i*2; j++)
-                group.add(xy_points.get(j));      //add each pair to the group
-            grouped_points.add(group);            //add the group to the PointSet list
+        for(int i= 0, j=xy_points.size()/num_places; i < xy_points.size()/num_places; i++) {
+            for(int k= i*num_places; k <= j; k++)
+                grouped_points.get(i).add(xy_points.get(k));      //add each pair to the group
         }
         //long start = System.currentTimeMillis();
         
-        Places places = new Places(1, PointSet.class.getName(), (Object)grouped_points, num_places);
-        
+        Places places = new Places(1, PartialVoronoi.class.getName(), grouped_points, num_places);
         // instruct all places to return the hostnames of the machines on which they reside
 	Object[] placeCallAllObjs = new Object[num_places];
 	MASS.getLogger().debug( "Voronoi sending callAll to Places..." );
-	Object[] calledPlacesResults = ( Object[] ) places.callAll( PointSet.GET_HOSTNAME, placeCallAllObjs );
+	Object[] calledPlacesResults = ( Object[] ) places.callAll( PartialVoronoi.GET_HOSTNAME, placeCallAllObjs );
 	MASS.getLogger().debug( "Places callAll operation complete" );
         
 
         // 8 nodes 4 cores
-        Object[] unmergedEdges = (Object[]) places.callAll(PointSet.COMPUTE_VORONOI);         //obtain voronoi edges from all computing nodes
-        
+        places.callAll(PartialVoronoi.COMPUTE_VORONOI);         //obtain voronoi edges from all computing nodes
+        Vector<int[]> neighbors= new Vector<int[]>();
+
         for(int i= 1; i < num_places; i*=2) {
+            
             //fill each PointSet's neighbor buffer with neighbor data
             // to gather 2 poinstsets into the smaller index
-            places.exchangeall(places.getHandle(), PointSet.FILL_NEIGHBOR_BUFFER); // and ignore message from i to i+1, only get message from i+1 to i
-            
-            //each index of merged contains a merged Pointset from node i and its corresponding node (i+1, i+2, i+4, i+8..)
-            Object[] merged= places.callAll(PointSet.MERGE_VORONOI, new Integer(i));
-            //set all of the merged PointSets to their correct indeces in Places
-            places[0]= (PointSet)merged[0];
-            int obj= 1;
+            places.exchangeAll(places.getHandle(), PartialVoronoi.FILL_NEIGHBOR_BUFFER); // and ignore message from i to i+1, only get message from i+1 to i
+
+            //each index of merged contains a merged PartialVoronoi from node i and its corresponding node (i+1, i+2, i+4, i+8..)
+            Object[] merged= places.callAll(PartialVoronoi.MERGE_VORONOI, new Object[num_places]);
+            //set all of the merged PartialVoronoi to their correct indeces in Places
+            places[0]= merged[0];
+
             for(int j= i; j < num_places; j*=i+1) places[j]= merged[j];
-            
         }
 
         //places[0] now contains complete voronoi edges
