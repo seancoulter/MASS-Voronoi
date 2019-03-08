@@ -2,6 +2,7 @@ package mass;
 
 
 import edu.uw.bothell.css.dsl.MASS.*;
+import edu.uw.bothell.css.dsl.MASS.logging.LogLevel;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -14,13 +15,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
-import mass.Point;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Vector;
 import mass.PartialVoronoi;
 
+import java.awt.geom.Point2D.Double;
 
 public class main {
 
@@ -39,7 +40,7 @@ public class main {
         MASS.getLogger().debug( "MASS initialized" );
         
         //holds x,y coordinates of each point in the input file
-        ArrayList<Point> xy_points= new ArrayList<Point>();
+        ArrayList<Double> xy_points= new ArrayList<Double>();
         
         //read input file, save contents to point_arr
         if(!read_infile(args[0], xy_points)) {
@@ -54,7 +55,7 @@ public class main {
         
         NUM_PLACES= num_places;
         
-        ArrayList<ArrayList<Point>> grouped_points= new ArrayList<ArrayList<Point>>();
+        ArrayList<ArrayList<Double>> grouped_points= new ArrayList<ArrayList<Double>>();
         
         // add first pair of Points as adding 1 pointset to grouped_points
         
@@ -71,7 +72,7 @@ public class main {
 	MASS.getLogger().debug( "Voronoi sending callAll to Places..." );
 	Object[] calledPlacesResults = ( Object[] ) places.callAll( PartialVoronoi.GET_HOSTNAME, placeCallAllObjs );
 	MASS.getLogger().debug( "Places callAll operation complete" );
-        
+
 
         // 8 nodes 4 cores
         places.callAll(PartialVoronoi.COMPUTE_VORONOI);         //obtain voronoi edges from all computing nodes
@@ -86,9 +87,9 @@ public class main {
             //each index of merged contains a merged PartialVoronoi from node i and its corresponding node (i+1, i+2, i+4, i+8..)
             Object[] merged= places.callAll(PartialVoronoi.MERGE_VORONOI, new Object[num_places]);
             //set all of the merged PartialVoronoi to their correct indeces in Places
-            places[0]= merged[0];
+            //places[0]= merged[0];
 
-            for(int j= i; j < num_places; j*=i+1) places[j]= merged[j];
+            //for(int j= i; j < num_places; j*=i+1) places[j]= merged[j];
         }
 
         //places[0] now contains complete voronoi edges
@@ -100,7 +101,7 @@ public class main {
     
     }
     
-    private static boolean read_infile(String inp, ArrayList<Point> points) {
+    private static boolean read_infile(String inp, ArrayList<Double> points) {
         File input= new File(inp);
         Pattern x_y_coord= Pattern.compile("(0|1)\\.(\\d)*,(0|1)\\.(\\d)*");
         try {
@@ -110,7 +111,7 @@ public class main {
                     String point= s.next(x_y_coord);
                     System.out.println(point);
                     String[] a= point.split(",");
-                    points.add(new Point(Double.parseDouble(a[0]), Double.parseDouble(a[1])));
+                    points.add(new Double(java.lang.Double.parseDouble(a[0]), java.lang.Double.parseDouble(a[1])));
                 }
                 catch(InputMismatchException e) {
                     System.out.println("problem with text file format"); System.exit(-1);
@@ -126,10 +127,10 @@ public class main {
         
     }
     
-    static class Sorter implements Comparator<Point> {
+    static class Sorter implements Comparator<Double> {
         @Override
-        public int compare(Point a, Point b) {
-            return Double.compare(a.x, b.x);
+        public int compare(Double a, Double b) {
+            return java.lang.Double.compare(a.getX(), b.getX());
         }
     }
     
